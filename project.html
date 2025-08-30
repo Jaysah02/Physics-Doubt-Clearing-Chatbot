@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Doubt Clearing Chatbot (Hinglish)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Style for the mic button when listening */
+        .mic-listening {
+            animation: pulse 1.5s infinite;
+            background-color: #4f46e5; /* A shade of indigo */
+        }
+        .mic-listening svg {
+            color: white;
+        }
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+            }
+        }
+        /* Notification styles */
+        #notification {
+            transition: opacity 0.5s, transform 0.5s;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-600 dark:text-indigo-400">Physics Doubt Clearing Chatbot</h1>
+            <p class="text-lg text-gray-600 dark:text-gray-400 mt-2">Aapka AI saathi Class 11th aur 12th Physics ke liye</p>
+        </header>
+
+        <main class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 relative">
+            <!-- Notification Bar -->
+            <div id="notification" class="absolute top-0 left-1/2 -translate-x-1/2 mt-4 p-3 rounded-lg text-white bg-red-500 font-semibold opacity-0 transform -translate-y-10" style="display: none;">
+                Notification message
+            </div>
+
+            <div id="chat-container" class="h-96 overflow-y-auto mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="flex justify-start mb-4">
+                    <div class="bg-indigo-500 text-white rounded-lg px-4 py-2 max-w-xs">
+                        Namaste! Class 11th ya 12th Physics se koi bhi doubt poochiye. Jaise ki: "Newton ka pehla niyam samjhaiye."
+                    </div>
+                </div>
+            </div>
+
+            <div id="input-container" class="flex items-center">
+                <input type="text" id="user-input" placeholder="Apna sawaal yahan type karein ya mic use karein..." class="flex-grow bg-gray-100 dark:bg-gray-600 border-2 border-transparent focus:border-indigo-500 rounded-lg py-3 px-4 focus:outline-none transition-colors">
+                <button id="mic-btn" class="ml-2 p-3 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-full transition-colors focus:outline-none">
+                     <svg class="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                </button>
+                <button id="send-btn" class="ml-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 focus:outline-none">
+                    Bhejein
+                </button>
+            </div>
+             <div id="loading-indicator" class="text-center mt-4" style="display: none;">
+                <div class="flex justify-center items-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                    <span class="ml-3 text-gray-500 dark:text-gray-400">Soch raha hai...</span>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center mt-8 text-sm text-gray-500 dark:text-gray-400">
+            <p>Gemini dwara sanchaalit</p>
+        </footer>
+    </div>
+
+    <script>
+        const sendBtn = document.getElementById('send-btn');
+        const userInput = document.getElementById('user-input');
+        const chatContainer = document.getElementById('chat-container');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const micBtn = document.getElementById('mic-btn');
+        const notification = document.getElementById('notification');
+
+        // --- Notification Handler ---
+        function showNotification(message) {
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translate(-50%, 0)';
+            }, 10);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translate(-50%, -2.5rem)';
+                 setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 500);
+            }, 4000);
+        }
+
+        // --- Speech Recognition Setup ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'hi-IN'; // Set to Hindi-India for better Hinglish recognition
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            micBtn.addEventListener('click', () => {
+                if (isListening) {
+                    recognition.stop();
+                    return;
+                }
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error("Error starting recognition:", e);
+                    showNotification("Mic shuru karne mein error aaya.");
+                }
+            });
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.classList.add('mic-listening');
+                userInput.placeholder = "Sun raha hoon... boliye...";
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micBtn.classList.remove('mic-listening');
+                userInput.placeholder = "Apna sawaal yahan type karein ya mic use karein...";
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                setTimeout(() => handleUserInput(), 200); // Automatically send after successful recognition
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                let errorMessage = "Mic istemal karne mein error aaya.";
+                if (event.error === 'no-speech') {
+                    errorMessage = "Maaf kijiye, maine aapki awaaz nahi suni. Kripya dobara koshish karein.";
+                } else if (event.error === 'audio-capture') {
+                    errorMessage = "Mic se audio capture karne mein samasya aa rahi hai.";
+                } else if (event.error === 'not-allowed') {
+                    errorMessage = "Mic ka access nahi mila. Kripya browser settings mein permission dein.";
+                }
+                showNotification(errorMessage);
+            };
+
+        } else {
+            console.log("Speech Recognition not supported in this browser.");
+            micBtn.style.display = 'none'; // Hide mic button if not supported
+            showNotification("Aapka browser voice input support nahi karta.");
+        }
+
+
+        // --- Hinglish Knowledge Base for RAG ---
+        const physicsKnowledgeBase = {
+            "newton ka pehla niyam": "Newton ka Pehla Niyam (Law of Inertia) kehta hai ki agar koi object ruka hua hai toh woh ruka rahega, aur agar koi object chal raha hai toh woh usi speed aur direction mein chalta rahega, jab tak us par koi bahari unbalanced force na lage.",
+            "newton ka doosra niyam": "Newton ka Doosra Niyam kehta hai ki kisi object ka acceleration us par lagne wale net force ke directly proportional aur uske mass ke inversely proportional hota hai. Iska formula hai F = ma.",
+            "newton ka teesra niyam": "Newton ka Teesra Niyam kehta hai ki har action ka ek equal aur opposite reaction hota hai. Iska matlab hai ki har interaction mein, do interacting objects par forces ka ek joda kaam karta hai.",
+            "kinematic equations": "Uniform acceleration ke liye teen mukhya kinematic equations hain: 1) v = u + at, 2) s = ut + (1/2)at^2, 3) v^2 = u^2 + 2as. Yahan u initial velocity, v final velocity, a acceleration, t time, aur s displacement hai.",
+            "projectile motion": "Projectile motion us object ka motion hai jise hawa mein phenka ya project kiya jaata hai, aur uspar sirf gravity ka acceleration lagta hai. Ek projectile ka path ek parabola hota hai.",
+            
+            "work done": "Physics mein, work tab hota hai jab kisi object par lagaya gaya force us object ko move karta hai. Ek constant force dwara kiya gaya work, force aur force ki direction mein hue displacement ka product hota hai. W = F * d * cos(theta).",
+            "kinetic energy": "Kinetic energy woh energy hai jo kisi object mein uske motion ke kaaran hoti hai. Iska formula KE = (1/2)mv^2 hai.",
+            "potential energy": "Potential energy woh stored energy hai jo kisi object mein uski position ya state ke kaaran hoti hai. Gravitational potential energy PE = mgh hoti hai.",
+            "conservation of energy": "Energy conservation ka niyam kehta hai ki energy na toh banayi ja sakti hai aur na hi nasht ki ja sakti hai, sirf ek form se doosre form mein badli ja sakti hai.",
+
+            "thermodynamics ka zeroth niyam": "Thermodynamics ka Zeroth Niyam kehta hai ki agar do system ek teesre system ke saath thermal equilibrium mein hain, toh woh aapas mein bhi thermal equilibrium mein hote hain.",
+            "thermodynamics ka pehla niyam": "Thermodynamics ka Pehla Niyam, jo energy conservation ka hi ek roop hai, kehta hai ki system ki internal energy mein badlav (ΔU) system ko di gayi heat (Q) aur system dwara kiye gaye work (W) ke antar ke barabar hota hai. ΔU = Q - W.",
+            "thermodynamics ka doosra niyam": "Thermodynamics ka Doosra Niyam kehta hai ki ek isolated system ki total entropy samay ke saath sirf badh sakti hai.",
+            "carnot engine": "Carnot engine ek theoretical engine hai jo Carnot cycle par chalta hai. Yeh do heat reservoirs ke beech kaam karte hue, heat ko work mein convert karne ki maximum possible efficiency deta hai.",
+
+            "coulomb ka niyam": "Coulomb ka Niyam kehta hai ki do point charges ke beech ka electrostatic force unke charge ke product ke directly proportional aur unke beech ki doori ke square ke inversely proportional hota hai. F = k * |q1*q2| / r^2.",
+            "electric field": "Electric field ek charge ke chaaron taraf ka woh area hai jahan doosre charges par force lagta hai. Electric field (E) ko force (F) per unit charge (q) se define kiya jaata hai. E = F/q.",
+            "gauss ka niyam": "Gauss ka Niyam kehta hai ki kisi bhi band surface se guzarne wala net electric flux us surface ke andar maujood net charge ka 1/ε₀ guna hota hai.",
+            "electric potential": "Electric potential, ya voltage, ek electric field mein ek unit charge ko ek point se doosre point tak le jaane mein kiya gaya work hai. V = W/q.",
+
+            "biot-savart niyam": "Biot-Savart Niyam ek constant electric current dwara paida kiye gaye magnetic field ko describe karta hai.",
+            "ampere ka circuital niyam": "Ampere ka Niyam ek band loop ke chaaron taraf integrated magnetic field ko us loop se guzarne wale electric current se jodta hai.",
+            "faraday ka induction ka niyam": "Faraday ka Induction ka Niyam kehta hai ki jab ek circuit se juda magnetic field badalta hai, toh usmein ek EMF (voltage) paida hota hai.",
+            "lenz ka niyam": "Lenz ka Niyam kehta hai ki induced current ki direction aisi hoti hai ki woh us badlav ka virodh karti hai jisne use paida kiya hai.",
+            
+            "snell ka niyam": "Snell ka Niyam light ya doosri waves ke liye hai jab woh ek medium se doosre medium mein jaati hain. Yeh incident angle aur refraction angle ke beech ka relation batata hai. n1*sin(θ1) = n2*sin(θ2).",
+            "total internal reflection": "Total Internal Reflection (TIR) tab hota hai jab ek wave ek medium se doosre mein jaate waqt critical angle se bade angle par takraati hai aur poori tarah reflect ho jaati hai.",
+            "young ka double slit experiment": "Young ka double-slit experiment ne pehli baar light ke wave nature ko saabit kiya. Yeh dikhata hai ki jab light do paas-paas slits se guzarti hai, toh woh interfere karke bright aur dark fringes ka pattern banati hai.",
+            "diffraction": "Diffraction, waves ka kisi rukawat ke kinaron se mudna hai. Yeh tab sabse zyada dikhta hai jab wave ki wavelength rukawat ke size ke barabar ho."
+        };
+
+        // --- RAG Implementation ---
+        function retrieveContext(query) {
+            const lowerCaseQuery = query.toLowerCase();
+            let bestMatch = null;
+            let highestScore = 0;
+
+            for (const keyword in physicsKnowledgeBase) {
+                if (lowerCaseQuery.includes(keyword)) {
+                    const score = keyword.length;
+                    if (score > highestScore) {
+                        highestScore = score;
+                        bestMatch = physicsKnowledgeBase[keyword];
+                    }
+                }
+            }
+            return bestMatch;
+        }
+
+        async function handleUserInput() {
+            const query = userInput.value.trim();
+            if (query === "") return;
+
+            appendMessage(query, 'user');
+            userInput.value = "";
+            loadingIndicator.style.display = 'flex';
+
+            try {
+                // 1. Retrieval
+                const context = retrieveContext(query);
+
+                // 2. Augmentation & Generation
+                let prompt;
+                if (context) {
+                    prompt = `Neeche diye gaye context ke आधार par, user ke sawaal ka jawaab dein. Agar context kaafi nahi hai, toh physics ke apne general knowledge ka istemaal karein.\n\nContext: "${context}"\n\nSawaal: "${query}"\n\nJawaab Class 11th ya 12th ke student ke liye aasaan Hinglish (Hindi aur English ka mix) mein dein.`;
+                } else {
+                    prompt = `Class 11th ya 12th ke student ke liye is physics ke sawaal ka jawaab aasaan Hinglish mein dein: "${query}"`;
+                }
+                
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                const payload = { contents: chatHistory };
+                const apiKey = "AIzaSyDEIcwsBNN95oKxy9cKW2RKO3It20KNI1M";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                let response;
+                let result;
+                let retries = 3;
+                let delay = 1000;
+
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (response.ok) {
+                            result = await response.json();
+                            break;
+                        }
+                    } catch (error) {
+                        if (i === retries - 1) throw error;
+                    }
+                    await new Promise(res => setTimeout(res, delay));
+                    delay *= 2;
+                }
+
+                let botResponse;
+                const candidate = result?.candidates?.[0];
+
+                if (candidate?.content?.parts?.[0]?.text) {
+                    botResponse = candidate.content.parts[0].text;
+                } else if (candidate?.finishReason === "SAFETY") {
+                    console.error("API Error: Response blocked for safety reasons.", result);
+                    botResponse = "Maaf kijiye, main is sawaal ka jawaab nahi de sakta. Kripya doosra sawaal poochhein.";
+                } else {
+                     console.error("API Error: Invalid response structure", result);
+                     botResponse = "Maaf kijiye, AI se jawaab process karne mein ek error aa gaya hai. Kripya dobara koshish karein.";
+                }
+                
+                if (!botResponse) { // Final fallback
+                    botResponse = "Maaf kijiye, main jawaab nahi de paaya. Kripya dobara koshish karein.";
+                }
+                
+                appendMessage(botResponse, 'bot');
+
+            } catch (error) {
+                console.error('Error:', error);
+                appendMessage('Maaf kijiye, kuch galat ho gaya. Kripya baad mein koshish karein.', 'bot');
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        function appendMessage(text, sender) {
+            const messageWrapper = document.createElement('div');
+            const messageElement = document.createElement('div');
+
+            messageWrapper.classList.add('flex', 'mb-4');
+            messageElement.classList.add('rounded-lg', 'px-4', 'py-2', 'max-w-md', 'md:max-w-lg');
+
+            if (sender === 'user') {
+                messageWrapper.classList.add('justify-end');
+                messageElement.classList.add('bg-indigo-600', 'text-white');
+            } else {
+                messageWrapper.classList.add('justify-start');
+                messageElement.classList.add('bg-gray-200', 'dark:bg-gray-600', 'text-gray-900', 'dark:text-gray-100');
+            }
+
+            messageElement.innerText = text;
+            messageWrapper.appendChild(messageElement);
+            chatContainer.appendChild(messageWrapper);
+            chatContainer.scrollTop = chatContainer.scrollHeight; 
+        }
+
+        sendBtn.addEventListener('click', handleUserInput);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleUserInput();
+            }
+        });
+    </script>
+</body>
+</html>
